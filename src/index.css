@@ -1,0 +1,74 @@
+:root {
+  --text: #475569;
+  --text-h: #0f172a;
+  --muted: #64748b;
+  --bg: #fff7ed;
+  --border: rgba(148, 163, 184, 0.28);
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: rgba(255, 237, 213, 0.92);
+  --shadow:
+    0 24px 48px rgba(148, 163, 184, 0.16),
+    0 10px 24px rgba(15, 23, 42, 0.06);
+
+  font-family:
+    "Satoshi",
+    "Avenir Next",
+    "Segoe UI",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top, rgba(251, 146, 60, 0.16), transparent 32%),
+    linear-gradient(180deg, #fff7ed 0%, #fffbf5 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+body,
+button,
+textarea {
+  font: inherit;
+}
+
+button,
+textarea {
+  border: 0;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+p,
+ul {
+  margin: 0;
+}
