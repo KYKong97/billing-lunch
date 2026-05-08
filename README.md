@@ -1,5 +1,14 @@
 # React + TypeScript + Vite
 
+## Worker configuration
+
+The expense extraction worker uses the OpenAI Agents SDK. Set `OPENAI_API_KEY`
+in your local environment or as a Wrangler secret before calling `/api/chat`:
+
+```sh
+wrangler secret put OPENAI_API_KEY
+```
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

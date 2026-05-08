@@ -16,11 +16,7 @@
 	"upload_source_maps": true,
 	"compatibility_flags": [
 		"nodejs_compat"
-	],
-	"vars": {
-		"OPENROUTER_API_KEY": "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",
-		"DATABASE_URL":"postgresql://neondb_owner:npg_9CNXKx7IEncW@ep-lively-flower-aon0hobb-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-	}
+	]
 
 	/**
 	 * Smart Placement
