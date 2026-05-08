@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import type { ExpensePayload } from "./types";
 
-const DEFAULT_MODEL = "gpt-5.4-nano";
+const TRIAGE_MODEL = "gpt-5.4-nano";
+const EXTRACTION_MODEL = "gpt-5.4-mini";
 
 setTracingDisabled(true);
 
@@ -19,7 +20,7 @@ const ExpenseSchema = z
 
 const expenseAgent = new Agent({
   name: "Expense Extractor",
-  model: DEFAULT_MODEL,
+  model: EXTRACTION_MODEL,
   instructions: [
     "Extract an expense record from the user's sentence.",
     "Return only the structured expense payload with exactly these keys:",
@@ -31,6 +32,18 @@ const expenseAgent = new Agent({
     "item must be a string describing what was bought.",
   ].join(" "),
   outputType: ExpenseSchema,
+});
+
+
+const expenseTriageAgent = Agent.create({
+  name: "Expense Intake Triage Agent",
+  model: TRIAGE_MODEL,
+  instructions: [
+    "Route messages that describe a purchase to the Expense Extractor agent.",
+    "If a message does not contain enough purchase detail, ask for a clear expense sentence with date, place, amount, category, and item.",
+    "Never invent fields; collect missing details before extraction.",
+  ].join(" "),
+  handoffs: [expenseAgent],
 });
 
 function stripCodeFences(value: string) {
@@ -103,7 +116,7 @@ export async function extractExpense(
 
   const now = new Date();
   const result = await run(
-    expenseAgent,
+    expenseTriageAgent,
     [
       `Current date/time context: ${now.toISOString()}.`,
       "If the user uses a relative date such as today, yesterday, or tomorrow, resolve it from that context.",

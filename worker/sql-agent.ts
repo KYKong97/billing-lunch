@@ -10,7 +10,8 @@ import { z } from "zod";
 import { executeExpenseSql } from "./database";
 import type { SqlQueryResult, SqlRequirementResult } from "./types";
 
-const DEFAULT_MODEL = "gpt-5.4-nano";
+const TRIAGE_MODEL = "gpt-5.4-nano";
+const SQL_MODEL = "gpt-5.4-mini";
 
 setTracingDisabled(true);
 
@@ -54,7 +55,7 @@ function createSqlAgents(databaseUrl: string, sqlRunner: SqlRunner) {
     name: "Expense SQL Agent",
     handoffDescription:
       "Translates expense reporting requirements into read-only SQL and runs the query.",
-    model: DEFAULT_MODEL,
+    model: TRIAGE_MODEL,
     instructions: [
       "You translate the user's expense reporting requirement into PostgreSQL.",
       SCHEMA_DESCRIPTION,
@@ -69,7 +70,7 @@ function createSqlAgents(databaseUrl: string, sqlRunner: SqlRunner) {
 
   const triageAgent = Agent.create({
     name: "Expense Requirement Triage Agent",
-    model: DEFAULT_MODEL,
+    model: SQL_MODEL,
     instructions: [
       "You triage user requirements for the expense database.",
       "For any request asking to inspect, summarize, total, filter, group, compare, or list expense data, hand off to the Expense SQL Agent.",

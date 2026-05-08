@@ -11,6 +11,16 @@ wrangler secret put OPENAI_API_KEY
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Agent-to-agent workflow
+
+The worker uses agent handoffs (agent-to-agent calls) in both routes:
+
+- `/api/chat`: `Expense Intake Triage Agent` (`gpt-5.4-nano`) hands off to `Expense Extractor` (`gpt-5.4-mini`) for structured extraction.
+- `/api/query`: `Expense Requirement Triage Agent` (`gpt-5.4-nano`) hands off to `Expense SQL Agent` (`gpt-5.4-mini`) for SQL generation + tool execution.
+
+This follows the OpenAI Agents "mixing models in one workflow" pattern, where faster/cheaper routing models delegate specialized tasks to stronger models when needed.
+
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
