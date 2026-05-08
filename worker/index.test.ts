@@ -5,6 +5,7 @@ import {
   type ExpensePayload,
   type WorkerDependencies,
 } from "./index";
+import { validateExpenseSql } from "./database";
 
 const env = {
   OPENAI_API_KEY: "test-openai-key",
@@ -19,8 +20,8 @@ const expense: ExpensePayload = {
   item: "Nasi lemak",
 };
 
-function makeRequest(body: unknown) {
-  return new Request("https://billing-lunch.test/api/chat", {
+function makeRequest(path: "/api/chat" | "/api/query", body: unknown) {
+  return new Request(`https://billing-lunch.test${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -36,6 +37,12 @@ function makeDependencies(
       id: 42,
       created_at: "2026-05-08T04:30:00.000Z",
     })),
+    answerSqlRequirement: vi.fn(async () => ({
+      reply: "SELECT SUM(amount) AS total FROM expenses returned one row.",
+      sql: "SELECT SUM(amount) AS total FROM expenses",
+      rows: [{ total: "18.50" }],
+      rowCount: 1,
+    })),
     ...overrides,
   };
 }
@@ -46,7 +53,7 @@ describe("GitHub upload worker endpoint", () => {
     const worker = createWorkerHandler(dependencies);
 
     const response = await worker.fetch(
-      makeRequest({
+      makeRequest("/api/chat", {
         messages: [
           { role: "assistant", content: "What did you buy?" },
           { role: "user", content: "Lunch at GitHub Cafe was RM18.50" },
@@ -88,7 +95,7 @@ describe("GitHub upload worker endpoint", () => {
     const worker = createWorkerHandler(dependencies);
 
     const response = await worker.fetch(
-      makeRequest({ messages: [{ role: "user", content: "   " }] }),
+      makeRequest("/api/chat", { messages: [{ role: "user", content: "   " }] }),
       env,
     );
 
@@ -109,7 +116,7 @@ describe("GitHub upload worker endpoint", () => {
     const worker = createWorkerHandler(dependencies);
 
     const response = await worker.fetch(
-      makeRequest({ messages: [{ role: "user", content: "Lunch RM10" }] }),
+      makeRequest("/api/chat", { messages: [{ role: "user", content: "Lunch RM10" }] }),
       env,
     );
 
@@ -129,7 +136,7 @@ describe("GitHub upload worker endpoint", () => {
     const worker = createWorkerHandler(dependencies);
 
     const response = await worker.fetch(
-      makeRequest({ messages: [{ role: "user", content: "Lunch RM10" }] }),
+      makeRequest("/api/chat", { messages: [{ role: "user", content: "Lunch RM10" }] }),
       { OPENAI_API_KEY: env.OPENAI_API_KEY },
     );
 
@@ -139,5 +146,77 @@ describe("GitHub upload worker endpoint", () => {
     expect(body.error).toContain("DATABASE_URL is missing");
     expect(dependencies.extractExpense).not.toHaveBeenCalled();
     expect(dependencies.saveExpense).not.toHaveBeenCalled();
+  });
+});
+
+describe("SQL requirement worker endpoint", () => {
+  it("routes database requirements through the triage SQL agent", async () => {
+    const dependencies = makeDependencies();
+    const worker = createWorkerHandler(dependencies);
+
+    const response = await worker.fetch(
+      makeRequest("/api/query", {
+        requirement: "How much did I spend on lunch?",
+      }),
+      env,
+    );
+
+    const body = (await response.json()) as {
+      reply: string;
+      sql: string;
+      rows: Array<{ total: string }>;
+      rowCount: number;
+    };
+
+    expect(response.status).toBe(200);
+    expect(dependencies.answerSqlRequirement).toHaveBeenCalledWith(
+      env.OPENAI_API_KEY,
+      env.DATABASE_URL,
+      "How much did I spend on lunch?",
+    );
+    expect(body).toMatchObject({
+      sql: "SELECT SUM(amount) AS total FROM expenses",
+      rows: [{ total: "18.50" }],
+      rowCount: 1,
+    });
+  });
+
+  it("rejects SQL requirements without a user prompt", async () => {
+    const dependencies = makeDependencies();
+    const worker = createWorkerHandler(dependencies);
+
+    const response = await worker.fetch(
+      makeRequest("/api/query", { messages: [] }),
+      env,
+    );
+
+    const body = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Please send a database requirement.");
+    expect(dependencies.answerSqlRequirement).not.toHaveBeenCalled();
+  });
+});
+
+describe("expense SQL validation", () => {
+  it("allows one read-only query against expenses", () => {
+    expect(validateExpenseSql("SELECT place, amount FROM expenses;")).toBe(
+      "SELECT place, amount FROM expenses",
+    );
+  });
+
+  it("blocks mutation statements", () => {
+    expect(() => validateExpenseSql("DELETE FROM expenses")).toThrow(
+      "Only SELECT or WITH queries are allowed.",
+    );
+    expect(() =>
+      validateExpenseSql("WITH deleted AS (DELETE FROM expenses RETURNING *) SELECT * FROM deleted"),
+    ).toThrow("Only read-only expense queries are allowed.");
+  });
+
+  it("blocks reads from any table except expenses", () => {
+    expect(() => validateExpenseSql("SELECT * FROM users")).toThrow(
+      "Queries may only read from the expenses table.",
+    );
   });
 });
